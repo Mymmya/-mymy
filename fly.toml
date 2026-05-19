@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for mymy on 2026-05-19T21:48:32Z
+# fly.toml app configuration file generated for ymy on 2026-05-19T21:59:36Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'mymy'
-primary_region = 'arn'
+app = 'ymy'
+primary_region = 'ams'
 
 [build]
 
