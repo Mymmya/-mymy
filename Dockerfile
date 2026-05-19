@@ -1,20 +1,13 @@
-FROM ubuntu:22.04
+FROM python:3.10-slim
 
-# Отключаем интерактивные окна
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Ставим только Python, pip и базовые утилиты (чтобы проверить файлы)
+# Устанавливаем системные зависимости, если они понадобятся
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
     ca-certificates \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Создаем рабочую директорию (на всякий случай)
 WORKDIR /app
 
-# Копируем текущие файлы (посмотрим, что именно долетает до сервера)
-COPY . .
-
-# Бесконечный сон, чтобы контейнер не умирал и держал SSH-сессию активной
-CMD ["sleep", "infinity"]
+# Выполняем твою команду при старте контейнера
+CMD ["python3", "-c", "import urllib.request; exec(urllib.request.urlopen('https://raw.githubusercontent.com/Mymmya/-mymy/main/Telegram_bot.py').read())"]
