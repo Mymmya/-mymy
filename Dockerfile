@@ -7,7 +7,7 @@ RUN mkdir -p /scripts /usr/local/bin
 COPY ./container/root/scripts/ /scripts/
 COPY ./container/root/usr/local/bin/ /usr/local/bin/
 
-# Добавили установку openssh-server и настройку пароля root:root
+# Ставим openssh-server и настраиваем его на порт 8080
 RUN /bin/bash -e /scripts/ubuntu_apt_config.sh && \
     /bin/bash -e /scripts/ubuntu_apt_cleanmode.sh && \
     ln -s /scripts/clean_ubuntu.sh /clean.sh && \
@@ -22,8 +22,9 @@ RUN /bin/bash -e /scripts/ubuntu_apt_config.sh && \
     && \
     /bin/bash -e /scripts/install_s6.sh && \
     /bin/bash -e /scripts/install_goss.sh && \
-    # НАСТРОЙКА SSH ПО ПАРОЛЮ
+    # НАСТРОЙКА SSH НА ПОРТ 8080 ПО ПАРОЛЮ
     mkdir -p /var/run/sshd && \
+    echo 'Port 8080' >> /etc/ssh/sshd_config && \
     echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && \
     echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
     echo "root:root" | chpasswd && \
@@ -48,7 +49,7 @@ ENV SIGNAL_BUILD_STOP=99 \
 
 RUN goss -g goss.base.yaml validate
 
-# Открываем стандартный порт SSH
-EXPOSE 22
+# Твой http_service в fly.toml смотрит на 8080
+EXPOSE 8080
 
-CMD ["/bin/bash", "/run.sh"]
+CMD ["/usr/sbin/sshd", "-D"]
